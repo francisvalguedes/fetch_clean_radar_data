@@ -1,6 +1,6 @@
 # Fetch and Clean Radar Data
 
-## Instalar dependencias sem criar ambiente virtual:
+## Instalar dependências sem criar ambiente virtual:
 
 ~~~
 sudo apt install -y python3
@@ -9,7 +9,7 @@ sudo apt install -y python3-pip
 pip install -r requirements.txt
 ~~~
 
-## Instalar dependencias com ambiente virtual:
+## Instalar dependências com ambiente virtual:
 
 ~~~
 sudo apt install -y python3
