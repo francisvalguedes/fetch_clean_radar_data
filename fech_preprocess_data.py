@@ -5,6 +5,8 @@ import glob
 from datetime import datetime
 import os
 
+# Funções
+# ****************************************************
 def dellfiles(file):
     py_files = glob.glob(file)
     err = 0
@@ -61,6 +63,9 @@ def split_data(file_names, sensor_sel):
             df_split.to_csv('raw_data_split' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx)+'.csv', index = False)
 
 
+# Inicialização
+# ******************************************
+
 sample_time = 0.01
 sensor_sel = 'Bearn-CLBI'
 
@@ -98,7 +103,7 @@ for line in txt_files:
     df.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear.csv',
                 columns = columns, 
                 header= header,
-                float_format='%.3f',
+                # float_format='%.3f',
                 index = False
                 )
     

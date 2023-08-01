@@ -1,6 +1,6 @@
 # Fetch and Clean Radar Data
 
-## Use without virtual environment:
+## Instalar dependencias sem criar ambiente virtual:
 
 ~~~
 sudo apt install -y python3
@@ -9,7 +9,7 @@ sudo apt install -y python3-pip
 pip install -r requirements.txt
 ~~~
 
-## Use with virtual environment:
+## Instalar dependencias com ambiente virtual:
 
 ~~~
 sudo apt install -y python3
@@ -20,3 +20,11 @@ python -m venv .env
 source env/bin/activate
 pip install -r requirements.txt
 ~~~
+
+## Utilização;
+
+Colocar os arquivos brutos .d na pasta raw_data/
+
+Executar python fech_preprocess_data.py
+
+Os arquivos resultantes aparecem nas pastas raw_data_split/ e clear_data/
