@@ -4,7 +4,6 @@ from datetime import timedelta
 import glob
 from datetime import datetime
 import os
-# import pymap3d as pm
 
 # Funções
 # ****************************************************
@@ -60,52 +59,9 @@ def split_data(file_names, sensor_sel):
                 df_split = df.iloc[top_index_list[idx]+1:,:]
                 df_list.append(df_split)
 
-            # df_split['TOP'] = [df.loc[top_index_list[idx], 'Hora']]
-
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)]
-            raw_file_name = 'raw_data_split' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx)+'.csv'
-            df_split.to_csv(raw_file_name, index = False)
+            df_split.to_csv('raw_data_split' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx)+'.csv', index = False)
 
-            df = pd.read_csv(raw_file_name,
-                        # skipinitialspace=True,
-                        # skiprows=range(10),
-                        # dtype = str,
-                        delimiter=','
-                        )
-
-            df['TR'] = np.round(np.arange(0,df.shape[0])*sample_time, decimals=2)
-
-            df['S'] = df['SAGADA'].str[1]
-            df['G'] = df['SAGADA'].str[3]
-            df['D'] = df['SAGADA'].str[5]
-
-            # raw_data_split_ls.append(df)
-
-            # df = df[df['Z_Rampa']>0]
-            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-            header = ['Tempo Universal','Tempo Relativo','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-            df.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear.csv',
-                        columns = columns, 
-                        header= header,
-                        # float_format='%.3f',
-                        index = False
-                        )
-            
-            # lat, lon, alt = pm.enu2geodetic(df['X_Rampa'], df['Y_Rampa'], df['Z_Rampa'],
-            #                                 -5.922037, -35.161362, 45,
-            #                                 ell=pm.Ellipsoid(model='wgs72'),
-            #                                 deg=True)
-
-            dic = { 'Z_max': [df['Z_Rampa'].max()],
-                    'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
-                    'Data': [df.loc[0, 'Data']],
-                    'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
-                    }
-            df_resume = pd.DataFrame(dic)
-
-            df_resume.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear_resume.csv',
-                    index = False
-                    )
 
 # Inicialização
 # ******************************************
@@ -135,8 +91,8 @@ for line in txt_files:
                 # dtype = str,
                 delimiter=','
                 )
-
-    df['TR'] = np.round(np.arange(0,df.shape[0])*sample_time, decimals=2)
+    
+    df['TR'] = np.arange(0,len(df.index)*sample_time, sample_time)
 
     df['S'] = df['SAGADA'].str[1]
     df['G'] = df['SAGADA'].str[3]
@@ -152,18 +108,13 @@ for line in txt_files:
                 header= header,
                 # float_format='%.3f',
                 index = False
-                )
-    
-    # lat, lon, alt = pm.enu2geodetic(df['X_Rampa'], df['Y_Rampa'], df['Z_Rampa'],
-    #                                 -5.922037, -35.161362, 45,
-    #                                 ell=pm.Ellipsoid(model='wgs72'),
-    #                                 deg=True)
+                )    
 
-    dic = { 'Z_max': [df['Z_Rampa'].max()],
-            'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
-            'Data': [df.loc[0, 'Data']],
-            'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
-            }
+    dic = {'Z_max': [df['Z_Rampa'].max()],
+           'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
+           'Data': [df.loc[0, 'Data']],
+           'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
+           }
     df_resume = pd.DataFrame(dic)
 
     df_resume.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear_resume.csv',
