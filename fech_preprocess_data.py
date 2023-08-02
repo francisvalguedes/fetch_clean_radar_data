@@ -4,6 +4,7 @@ from datetime import timedelta
 import glob
 from datetime import datetime
 import os
+# import pymap3d as pm
 
 # Funções
 # ****************************************************
@@ -91,8 +92,8 @@ for line in txt_files:
                 # dtype = str,
                 delimiter=','
                 )
-    
-    df['TR'] = np.arange(0,len(df.index)*sample_time, sample_time)
+
+    df['TR'] = np.arange(0,df.shape[0])*sample_time
 
     df['S'] = df['SAGADA'].str[1]
     df['G'] = df['SAGADA'].str[3]
@@ -108,13 +109,18 @@ for line in txt_files:
                 header= header,
                 # float_format='%.3f',
                 index = False
-                )    
+                )
+    
+    # lat, lon, alt = pm.enu2geodetic(df['X_Rampa'], df['Y_Rampa'], df['Z_Rampa'],
+    #                                 -5.922037, -35.161362, 45,
+    #                                 ell=pm.Ellipsoid(model='wgs72'),
+    #                                 deg=True)
 
-    dic = {'Z_max': [df['Z_Rampa'].max()],
-           'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
-           'Data': [df.loc[0, 'Data']],
-           'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
-           }
+    dic = { 'Z_max': [df['Z_Rampa'].max()],
+            'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
+            'Data': [df.loc[0, 'Data']],
+            'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
+            }
     df_resume = pd.DataFrame(dic)
 
     df_resume.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear_resume.csv',
