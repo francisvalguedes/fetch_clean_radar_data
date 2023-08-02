@@ -93,7 +93,7 @@ for line in txt_files:
                 delimiter=','
                 )
 
-    df['TR'] = np.arange(0,df.shape[0])*sample_time
+    df['TR'] = np.round(np.arange(0,df.shape[0])*sample_time, decimals=2)
 
     df['S'] = df['SAGADA'].str[1]
     df['G'] = df['SAGADA'].str[3]
