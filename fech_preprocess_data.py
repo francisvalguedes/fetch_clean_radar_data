@@ -81,6 +81,9 @@ txt_files = glob.glob('raw_data_split/*.csv')
 print(txt_files)
 
 raw_data_split_ls = []
+
+# Loop
+# ******************************************
 for line in txt_files:
     df = pd.read_csv(line,
                 # skipinitialspace=True,
@@ -105,8 +108,7 @@ for line in txt_files:
                 header= header,
                 # float_format='%.3f',
                 index = False
-                )
-    
+                )    
 
     dic = {'Z_max': [df['Z_Rampa'].max()],
            'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
@@ -125,8 +127,8 @@ for line in txt_files:
 
 #df[df['Valido']=='Valido']
 
-df=df.round(2)
-df['TR']=df['TR'].astype(str)
+# df=df.round(2)
+# df['TR']=df['TR'].astype(str)
 
 # df.to_csv('clear_data' + os.path.sep + 'bruto.csv',
 #         columns = ['TR', 'X', 'Y', 'Z'],
