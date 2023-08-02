@@ -4,7 +4,7 @@ from datetime import timedelta
 import glob
 from datetime import datetime
 import os
-# import pymap3d as pm
+import pymap3d as pm
 
 # Funções
 # ****************************************************
@@ -20,7 +20,7 @@ def dellfiles(file):
     return err
 
 
-def split_data(file_names, sensor_sel):
+def split_data(file_names):
     # raw_data_ls = []
     df_list = []
     for line in file_names:
@@ -63,15 +63,15 @@ def split_data(file_names, sensor_sel):
             top_dec = df.loc[top_index_list[idx], 'Hora']
 
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)]
-            raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx)+'.csv'
-            df_split.to_csv(raw_file_name, index = False)
+            raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx)
+            df_split.to_csv(raw_file_name + '_bruto.csv', index = False)
 
-            df_clear = pd.read_csv(raw_file_name,
+            df_clear = pd.read_csv(raw_file_name + '_bruto.csv',
                         # skipinitialspace=True,
                         # skiprows=range(10),
                         # dtype = str,
                         delimiter=','
-                        )
+                        )                       
 
             df_clear['TR'] = np.round(np.arange(0,df_clear.shape[0])*sample_time, decimals=2)
 
@@ -79,26 +79,46 @@ def split_data(file_names, sensor_sel):
             df_clear['G'] = df_clear['SAGADA'].str[3]
             df_clear['D'] = df_clear['SAGADA'].str[5]
 
+            
 
-            # lat, lon, alt = pm.enu2geodetic(df_clear['X_Rampa'], df_clear['Y_Rampa'], df_clear['Z_Rampa'],
-            #                                 Ramp['lat'], Ramp['lon'], Ramp['height'],
-            #                                 ell=pm.Ellipsoid(model='wgs72'),
-            #                                 deg=True)
+
+            lat, lon, alt = pm.enu2geodetic(1000*df_clear['X_Rampa'], 1000*df_clear['Y_Rampa'], 1000*df_clear['Z_Rampa'],
+                                            Ramp['lat'], Ramp['lon'], Ramp['height'],
+                                            ell=pm.Ellipsoid(model= ellipsoid), 
+                                            deg=True)
+            
+            df_clear['lat'] = lat
+            df_clear['lon'] = lon
+            df_clear['height'] = 0.001*alt
+
+            # Salva dataframe completo
+            df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
 
             # raw_data_split_ls.append(df_clear)
 
-            # df_clear = df_clear[df_clear['Z_Rampa']>0]
+            
             columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
             header = ['Tempo Universal','Tempo Relativo','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-            df_clear.to_csv(raw_file_name,
+            df_clear.to_csv(raw_file_name + '_limpo.csv',
                         columns = columns, 
                         header= header,
                         # float_format='%.3f',
                         index = False
-                        )        
+                        )                        
 
+            # remove outliers do radar (ultrapassagem do km 0)
+            if len(df_clear[df_clear['Dist']>4000].index)>0:
+                print('Presença de ' +str(len(df_clear[df_clear['Dist']>4000].index))+ ' outliers d>4000km em tr ' + str(idx))
+            df_clear = df_clear[df_clear['Dist']<4000]
+            df_clear.reset_index(drop=True, inplace=True)
+            # df_clear = df_clear[df_clear['height']>0]
+
+            # print('max')
+            # print(df_clear['Z_Rampa'].max())
 
             dic = { 'TOP': [top_dec],
+                    'height_max': [df_clear['height'].max()],
+                    'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
                     'Z_max': [df_clear['Z_Rampa'].max()],
                     'TR_Z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
@@ -106,15 +126,20 @@ def split_data(file_names, sensor_sel):
                     }
             df_resume = pd.DataFrame(dic)
 
-            df_resume.to_csv( raw_file_name + '_resume.csv',
+            df_resume.to_csv( raw_file_name + '_resumo.csv',
                     index = False
                     )
+            
+            print('trajetória ' + str(idx) + ' concluída')
+
+            
 
 # Inicialização
 # ******************************************
 
 sample_time = 0.01
 sensor_sel = 'Bearn-CLBI'
+ellipsoid = 'wgs72'
 # -5.922037, -35.161362, 45
 Ramp = {'lat': -5.922037 ,'lon': -35.161362,'height': 45}
 
@@ -125,8 +150,9 @@ dellfiles(output_folder + os.path.sep + '*.csv' )
 txt_files = glob.glob('input_raw_data/*.d')
 print(txt_files)
 
-split_data(txt_files, sensor_sel)
+split_data(txt_files)
 
+print('processamento concluído')
 
 # raw_data_split_ls = []
 
