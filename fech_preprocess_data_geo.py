@@ -77,9 +77,7 @@ def split_data(file_names):
 
             df_clear['S'] = df_clear['SAGADA'].str[1]
             df_clear['G'] = df_clear['SAGADA'].str[3]
-            df_clear['D'] = df_clear['SAGADA'].str[5]
-
-            
+            df_clear['D'] = df_clear['SAGADA'].str[5]            
 
 
             lat, lon, alt = pm.enu2geodetic(1000*df_clear['X_Rampa'], 1000*df_clear['Y_Rampa'], 1000*df_clear['Z_Rampa'],
@@ -89,7 +87,13 @@ def split_data(file_names):
             
             df_clear['lat'] = lat
             df_clear['lon'] = lon
-            df_clear['height'] = 0.001*alt
+            df_clear['height'] = alt
+
+            # Elev	Azim	Dist
+            enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Elev'], df_clear['Azim'], 1000*df_clear['Dist'], deg=False)
+            df_clear['enu_x'] = enu_x
+            df_clear['enu_y'] = enu_y
+            df_clear['enu_z'] = enu_z
 
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
@@ -104,7 +108,10 @@ def split_data(file_names):
                         header= header,
                         # float_format='%.3f',
                         index = False
-                        )                        
+                        )  
+
+            # ****************************************************
+            # Informações Importantes do Rastreio                      
 
             # remove outliers do radar (ultrapassagem do km 0)
             outliers = df_clear[df_clear['Dist']>4000]
@@ -122,7 +129,7 @@ def split_data(file_names):
             df_clear.reset_index(drop=True, inplace=True)
 
             dic = { 'TOP': [top_dec],
-                    'height_max': [df_clear['height'].max()],
+                    'height_max': [0.001*df_clear['height'].max()],
                     'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
                     'Z_max': [df_clear['Z_Rampa'].max()],
                     'TR_Z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
