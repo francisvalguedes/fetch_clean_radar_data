@@ -23,8 +23,10 @@ pip install -r requirements.txt
 
 ## Utilização;
 
-Colocar os arquivos brutos .d na pasta raw_data/
+Colocar os arquivos brutos .d na pasta input_raw_data/
 
-Executar python fech_preprocess_data.py
+Executar python fech_preprocess_data_geo.py
 
-Os arquivos resultantes aparecem nas pastas raw_data_split/ e clear_data/
+ou o simplificado obsoleto fech_preprocess_data.py
+
+Os arquivos resultantes aparecem nas pastas output_clear_data/

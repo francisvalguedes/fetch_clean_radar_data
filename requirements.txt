@@ -1,3 +1,4 @@
 numpy
 pandas
 pymap3d==2.9.1
+matplotlib
