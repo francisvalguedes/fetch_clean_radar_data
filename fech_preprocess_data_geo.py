@@ -107,10 +107,15 @@ def split_data(file_names):
 
             df_clear['S'] = df_clear['SAGADA'].str[1]
             df_clear['G'] = df_clear['SAGADA'].str[3]
-            df_clear['D'] = df_clear['SAGADA'].str[5]            
+            df_clear['D'] = df_clear['SAGADA'].str[5]   
 
+            # Elev	Azim	Dist
+            enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
+            df_clear['sens_enu_x'] = enu_x
+            df_clear['sens_enu_y'] = enu_y
+            df_clear['sens_enu_z'] = enu_z      
 
-            lat, lon, alt = pm.enu2geodetic(1000*df_clear['X_Rampa'], 1000*df_clear['Y_Rampa'], 1000*df_clear['Z_Rampa'],
+            lat, lon, alt = pm.enu2geodetic(df_clear['sens_enu_x'], df_clear['sens_enu_y'], df_clear['sens_enu_z'],
                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
                                             ell=pm.Ellipsoid(model= ellipsoid), 
                                             deg=True)
@@ -119,11 +124,6 @@ def split_data(file_names):
             df_clear['lon'] = lon
             df_clear['height'] = alt
 
-            # Elev	Azim	Dist
-            enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
-            df_clear['sens_enu_x'] = enu_x
-            df_clear['sens_enu_y'] = enu_y
-            df_clear['sens_enu_z'] = enu_z
             ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
                                                 c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
                                                 ell=pm.Ellipsoid(model= ellipsoid),
@@ -172,8 +172,8 @@ def split_data(file_names):
             dic = { 'TOP': [top_dec],
                     'height_max': [0.001*df_clear['height'].max()],
                     'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
-                    'Z_max': [df_clear['Z_Rampa'].max()],
-                    'TR_Z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
+                    'ramp_z_max': [0.001*df_clear['ramp_enu_z'].max()],
+                    'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
                     'Período:' : [str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])],
                     'n_outliers>4000' : len(outliers.index)
@@ -181,7 +181,8 @@ def split_data(file_names):
             df_resume = pd.DataFrame(dic)
 
             df_resume.to_csv( raw_file_name + '_resumo.csv',
-                    index = False
+                    index = False,
+                    float_format='%.5f'
                     )
             
             print('trajetória ' + str(idx) + ' concluída')
@@ -201,7 +202,7 @@ ellipsoid = 'wgs72'
 # #-5.919500, -35.173654
 # Sensor = {'lat': -5.919500 ,'lon': -35.173654,'height': 57}
 
-c_ref = pd.read_csv( 'config/coord_ref.txt')
+c_ref = pd.read_csv( 'config/coord_ref_mr.txt')
 
 print('\n')
 print('coord_ref FILE:')
