@@ -107,14 +107,19 @@ def split_data(file_names):
                         )                        
 
             # remove outliers do radar (ultrapassagem do km 0)
-            if len(df_clear[df_clear['Dist']>4000].index)>0:
-                print('Presença de ' +str(len(df_clear[df_clear['Dist']>4000].index))+ ' outliers d>4000km em tr ' + str(idx))
+            outliers = df_clear[df_clear['Dist']>4000]
+            if len(outliers.index)>0:
+                print('Presença de ' +str(len(outliers.index))+ ' outliers d>4000km em tr ' + str(idx))
             df_clear = df_clear[df_clear['Dist']<4000]
-            df_clear.reset_index(drop=True, inplace=True)
+            
             # df_clear = df_clear[df_clear['height']>0]
-
+            df_clear = df_clear[df_clear['Valido']=='Valido'] # Apenas válidos
+            # print('len(df_clear.index)')
+            # print(len(df_clear.index))
             # print('max')
             # print(df_clear['Z_Rampa'].max())
+
+            df_clear.reset_index(drop=True, inplace=True)
 
             dic = { 'TOP': [top_dec],
                     'height_max': [df_clear['height'].max()],
@@ -122,7 +127,8 @@ def split_data(file_names):
                     'Z_max': [df_clear['Z_Rampa'].max()],
                     'TR_Z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
-                    'Período:' : [str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])]
+                    'Período:' : [str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])],
+                    'n_outliers>4000' : len(outliers.index)
                     }
             df_resume = pd.DataFrame(dic)
 
