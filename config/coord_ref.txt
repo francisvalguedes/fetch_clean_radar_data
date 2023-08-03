@@ -1,0 +1,3 @@
+name,lat,lon,height,ellipsoid
+RAMP,mr,-5°55'00.000,-35°10'00.000,0.0,wgs72
+SENS,brn,-5°55'00.000,-35°10'00.000,0.0,wgs72

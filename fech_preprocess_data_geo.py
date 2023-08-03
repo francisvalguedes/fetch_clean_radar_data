@@ -5,6 +5,8 @@ import glob
 from datetime import datetime
 import os
 import pymap3d as pm
+import re
+import sys
 
 # Funções
 # ****************************************************
@@ -18,6 +20,34 @@ def dellfiles(file):
             print(f"Error:{e.strerror}")
             err = e.strerror
     return err
+
+def gms_to_decimal(s):
+    angle_gms = re.split('[°\' "]+', s)
+    dd = 0
+    for i in range(3):
+        dd+= np.sign(float(angle_gms[0]))*abs(float(angle_gms[i])/(60**i))
+    return dd
+
+def fit_coord(coord_ref):
+    for index, row in coord_ref.iterrows():
+        if not isinstance(coord_ref.loc[index]['lat'], float):
+            try:
+                coord_ref.at[index,'lat'] = gms_to_decimal(coord_ref.loc[index]['lat'])
+            except:
+                print("error: coord_ref.csv file is not in proper angle format")
+                sys. exit()
+            try:
+                coord_ref.at[index,'lon'] = gms_to_decimal(coord_ref.loc[index]['lon'])
+            except:
+                print("error: coord_ref.csv file is not in proper angle format")
+                sys. exit()
+        if coord_ref.loc[index]['ellipsoid'] not in ['wgs72','wgs84']:
+            print("error: coord_ref.csv ellipsoid: wgs72' or 'wgs84")
+            sys. exit()
+        if  not isinstance(coord_ref.loc[index]['height'], float):
+            print("error: coord_ref.csv height must be float")
+            sys. exit()
+    return coord_ref
 
 
 def split_data(file_names):
@@ -81,7 +111,7 @@ def split_data(file_names):
 
 
             lat, lon, alt = pm.enu2geodetic(1000*df_clear['X_Rampa'], 1000*df_clear['Y_Rampa'], 1000*df_clear['Z_Rampa'],
-                                            Ramp['lat'], Ramp['lon'], Ramp['height'],
+                                            c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
                                             ell=pm.Ellipsoid(model= ellipsoid), 
                                             deg=True)
             
@@ -90,10 +120,21 @@ def split_data(file_names):
             df_clear['height'] = alt
 
             # Elev	Azim	Dist
-            enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Elev'], df_clear['Azim'], 1000*df_clear['Dist'], deg=False)
-            df_clear['enu_x'] = enu_x
-            df_clear['enu_y'] = enu_y
-            df_clear['enu_z'] = enu_z
+            enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
+            df_clear['sens_enu_x'] = enu_x
+            df_clear['sens_enu_y'] = enu_y
+            df_clear['sens_enu_z'] = enu_z
+            ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
+                                                c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
+                                                ell=pm.Ellipsoid(model= ellipsoid),
+                                                deg=True)
+            ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
+                                                          c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
+                                                          ell=pm.Ellipsoid(model= ellipsoid),
+                                                          deg=True)
+            df_clear['ramp_enu_x'] = ramp_enu_x
+            df_clear['ramp_enu_y'] = ramp_enu_y
+            df_clear['ramp_enu_z'] = ramp_enu_z
 
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
@@ -154,7 +195,20 @@ sample_time = 0.01
 sensor_sel = 'Bearn-CLBI'
 ellipsoid = 'wgs72'
 # -5.922037, -35.161362, 45
-Ramp = {'lat': -5.922037 ,'lon': -35.161362,'height': 45}
+# m -5.922222, -35.161440
+# Ramp = {'lat': -5.922222 ,'lon': -35.161362,'height': 43} heigh
+
+# #-5.919500, -35.173654
+# Sensor = {'lat': -5.919500 ,'lon': -35.173654,'height': 57}
+
+c_ref = pd.read_csv( 'config/coord_ref.txt')
+
+print('\n')
+print('coord_ref FILE:')
+print(c_ref)
+c_ref = fit_coord(c_ref)
+print(c_ref)
+print('\n')
 
 output_folder = 'output_clear_data'
 
@@ -166,6 +220,7 @@ print(txt_files)
 split_data(txt_files)
 
 print('processamento concluído')
+print('\n')
 
 # raw_data_split_ls = []
 
