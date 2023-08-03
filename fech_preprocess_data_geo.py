@@ -7,6 +7,7 @@ import os
 import pymap3d as pm
 import re
 import sys
+import matplotlib.pyplot as plt
 
 # Funções
 # ****************************************************
@@ -113,9 +114,23 @@ def split_data(file_names):
             enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
             df_clear['sens_enu_x'] = enu_x
             df_clear['sens_enu_y'] = enu_y
-            df_clear['sens_enu_z'] = enu_z      
+            df_clear['sens_enu_z'] = enu_z 
 
-            lat, lon, alt = pm.enu2geodetic(df_clear['sens_enu_x'], df_clear['sens_enu_y'], df_clear['sens_enu_z'],
+            ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
+                                                c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
+                                                ell=pm.Ellipsoid(model= ellipsoid),
+                                                deg=True)
+            
+            ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
+                                                          c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
+                                                          ell=pm.Ellipsoid(model= ellipsoid),
+                                                          deg=True)
+            
+            df_clear['ramp_enu_x'] = ramp_enu_x
+            df_clear['ramp_enu_y'] = ramp_enu_y
+            df_clear['ramp_enu_z'] = ramp_enu_z
+
+            lat, lon, alt = pm.enu2geodetic(df_clear['ramp_enu_x'], df_clear['ramp_enu_y'], df_clear['ramp_enu_z'],
                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
                                             ell=pm.Ellipsoid(model= ellipsoid), 
                                             deg=True)
@@ -124,17 +139,8 @@ def split_data(file_names):
             df_clear['lon'] = lon
             df_clear['height'] = alt
 
-            ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
-                                                c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
-                                                ell=pm.Ellipsoid(model= ellipsoid),
-                                                deg=True)
-            ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
-                                                          c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
-                                                          ell=pm.Ellipsoid(model= ellipsoid),
-                                                          deg=True)
-            df_clear['ramp_enu_x'] = ramp_enu_x
-            df_clear['ramp_enu_y'] = ramp_enu_y
-            df_clear['ramp_enu_z'] = ramp_enu_z
+            if truncar_elev:
+                df_clear = df_clear[df_clear['Elev']>perda_elev]
 
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
@@ -143,7 +149,7 @@ def split_data(file_names):
 
             
             columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-            header = ['Tempo Universal','Tempo Relativo','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
+            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(km)','Y_Rampa(km)','Z_Rampa(Km)']
             df_clear.to_csv(raw_file_name + '_limpo.csv',
                         columns = columns, 
                         header= header,
@@ -187,23 +193,45 @@ def split_data(file_names):
             
             print('trajetória ' + str(idx) + ' concluída')
 
+            # GRÁFICOS
+            if plot:
+                fig1 = plt.figure()
+                ax1 = fig1.subplots()
+                ax1.plot(df_clear['TR'],df_clear['height'], '.', label='Sensor')
+                ax1.set_xlabel('t(s)')
+                ax1.set_ylabel('height(m)')
+                ax1.legend()
+
+                plt.xlim(0)
+
+                # ax1 = fig1.add_subplot(111, projection='3d')
+                # ax1.plot3D(df_clear['ramp_enu_x'],df_clear['ramp_enu_y'],df_clear['ramp_enu_z'] , '.', label=sensor_sel)
+                # ax1.set_xlabel('X(m)')
+                # ax1.set_ylabel('Y(m)')
+                # ax1.set_zlabel('Z(m)')
+                # ax1.legend()
+
+                plt.show()
+
             
 
 # Inicialização
 # ******************************************
 
-sample_time = 0.01
-sensor_sel = 'Bearn-CLBI'
-ellipsoid = 'wgs72'
-# -5.922037, -35.161362, 45
-# m -5.922222, -35.161440
-# Ramp = {'lat': -5.922222 ,'lon': -35.161362,'height': 43} heigh
+sample_time = 0.01 # Periodo de amostragem
+sensor_sel = 'Bearn-CLBI' # Sensor
+ellipsoid = 'wgs72' # Ellipsoid
 
-# #-5.919500, -35.173654
-# Sensor = {'lat': -5.919500 ,'lon': -35.173654,'height': 57}
+truncar_elev = False
+perda_elev =  0.0  # 0.01 Angulo de perda radar
 
+# plota grafico a cada trajetória
+plot = True
+
+# Arquivo de configuração de localização do Sensor e da Rampa
 c_ref = pd.read_csv( 'config/coord_ref_mr.txt')
 
+# Execução do script
 print('\n')
 print('coord_ref FILE:')
 print(c_ref)
@@ -218,69 +246,10 @@ dellfiles(output_folder + os.path.sep + '*.csv' )
 txt_files = glob.glob('input_raw_data/*.d')
 print(txt_files)
 
+# Função principal
 split_data(txt_files)
 
 print('processamento concluído')
 print('\n')
 
-# raw_data_split_ls = []
-
-# # Loop
-# # ******************************************
-# for line in txt_files:
-#     df = pd.read_csv(line,
-#                 # skipinitialspace=True,
-#                 # skiprows=range(10),
-#                 # dtype = str,
-#                 delimiter=','
-#                 )
-
-#     df['TR'] = np.round(np.arange(0,df.shape[0])*sample_time, decimals=2)
-
-#     df['S'] = df['SAGADA'].str[1]
-#     df['G'] = df['SAGADA'].str[3]
-#     df['D'] = df['SAGADA'].str[5]
-
-#     raw_data_split_ls.append(df)
-
-#     # df = df[df['Z_Rampa']>0]
-#     columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-#     header = ['Tempo Universal','Tempo Relativo','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
-#     df.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear.csv',
-#                 columns = columns, 
-#                 header= header,
-#                 # float_format='%.3f',
-#                 index = False
-#                 )
-    
-#     # lat, lon, alt = pm.enu2geodetic(df['X_Rampa'], df['Y_Rampa'], df['Z_Rampa'],
-#     #                                 -5.922037, -35.161362, 45,
-#     #                                 ell=pm.Ellipsoid(model='wgs72'),
-#     #                                 deg=True)
-
-#     dic = { 'Z_max': [df['Z_Rampa'].max()],
-#             'TR_Z_max': [df.loc[df['Z_Rampa'].idxmax(), 'TR']],
-#             'Data': [df.loc[0, 'Data']],
-#             'Período:' : [str(df.loc[0, 'Hora']) + ' a ' + str(df.loc[len(df.index)-1, 'Hora'])]
-#             }
-#     df_resume = pd.DataFrame(dic)
-
-#     df_resume.to_csv('clear_data' + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_clear_resume.csv',
-#             index = False
-#             )
-    
-# print(raw_data_split_ls[0].dtypes)
-# print(np.max(raw_data_split_ls[0]['Z_Rampa']))
-
-
-#df[df['Valido']=='Valido']
-
-# df=df.round(2)
-# df['TR']=df['TR'].astype(str)
-
-# df.to_csv('clear_data' + os.path.sep + 'bruto.csv',
-#         columns = ['TR', 'X', 'Y', 'Z'],
-#         header= None,
-#         # float_format='%.3f',
-#         index = False
-#         )
+# Fim
