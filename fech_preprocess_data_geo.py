@@ -140,7 +140,7 @@ def split_data(file_names):
             df_clear['height'] = alt
 
             if truncar_elev:
-                df_clear = df_clear[df_clear['height']>perda_altitude]
+                df_clear = df_clear[df_clear['height']>altitude_perda_radar]
 
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
@@ -223,7 +223,7 @@ sensor_sel = 'Bearn-CLBI' # Sensor
 ellipsoid = 'wgs72' # Ellipsoid
 
 truncar_elev = False
-perda_altitude =  0.0  # 0.01 Angulo de perda radar
+altitude_perda_radar =  0.0  # altitude geodesica de perda radar
 
 # plota grafico a cada trajetória
 plot = True
