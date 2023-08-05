@@ -10,6 +10,7 @@ import sys
 import matplotlib.pyplot as plt
 # import geopy.distance
 import pymap3d.vincenty as pmv
+from io import StringIO
 
 # ****************************************************
 # Desenvolvido em agosto de 2023 por Francisval Guedes
@@ -20,7 +21,7 @@ import pymap3d.vincenty as pmv
 # Funções
 # ****************************************************
 
-# impreciso (não utilizado); substituido por pymap3d.vincenty
+# impreciso considera terra redonda (não utilizado); substituido por pymap3d.vincenty
 def hav_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the Haversine distance.
@@ -49,6 +50,29 @@ def hav_distance(lat1, lon1, lat2, lon2):
 
 # Funções
 # ****************************************************
+
+def plot_traj(df_graf, titulo = 'Título'):    
+    df = df_graf[df_graf['Dist']<4000]
+    df_val = df[df['Valido']=='Valido']
+    df_nval = df[df['Valido']!='Valido']
+    fig1 = plt.figure()
+    ax1 = fig1.subplots()
+    ax1.plot(df_val['TR'],df_val['height'], '.', label='Válidos')
+    ax1.plot(df_nval['TR'],df_nval['height'], '.', label='Não válidos')
+    ax1.set_xlabel('t(s)')
+    ax1.set_ylabel('height(m)')
+    ax1.legend()
+    plt.title(titulo)
+    plt.xlim(0)
+
+    # ax1 = fig1.add_subplot(111, projection='3d')
+    # ax1.plot3D(df_clear['ramp_enu_x'],df_clear['ramp_enu_y'],df_clear['ramp_enu_z'] , '.', label=sensor_sel)
+    # ax1.set_xlabel('X(m)')
+    # ax1.set_ylabel('Y(m)')
+    # ax1.set_zlabel('Z(m)')
+    # ax1.legend()
+    plt.show()
+
 def dellfiles(file):
     """
     Apaga arquivos em um determinado caminho.
@@ -115,7 +139,7 @@ def split_data(file_names):
     coord_ref - lista de strings - nomes dos arquivos
     """
     for line in file_names:  # varre a lista de arquivos
-        print(line)
+        print('Aguarde: Processando o arquivo: ' + line)
         df = pd.read_csv(line,
                     skipinitialspace=True,
                     # skiprows=range(10),
@@ -159,16 +183,20 @@ def split_data(file_names):
 
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)] # salva apenas o radar selecionado
             raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
-            df_split.to_csv(raw_file_name + '_bruto.csv', index = False) # salva arquivo bruto dividido
-            
-            # *************************************************************
-            # Ler o arquivo salvo
-            df_clear = pd.read_csv(raw_file_name + '_bruto.csv',
-                        # skipinitialspace=True,
-                        # skiprows=range(10),
-                        # dtype = str,
-                        delimiter=','
-                        )
+
+            # df_split.to_csv(raw_file_name + '_bruto.csv', index = False) # salva arquivo bruto dividido            
+            csv_buffer = StringIO() # salva arquivo bruto dividido em buffer
+            df_split.to_csv(csv_buffer, index = False)
+            # *************************************************************            
+            # Ler o arquivo salvo no buffer
+            csv_buffer.seek(0)
+            df_clear = pd.read_csv(csv_buffer, delimiter=',')
+            # df_clear = pd.read_csv(raw_file_name + '_bruto.csv',
+            #             # skipinitialspace=True,
+            #             # skiprows=range(10),
+            #             # dtype = str,
+            #             delimiter=','
+            #             )
 
             df_clear['datetime'] = time   # Cria coluna datetime
 
@@ -245,7 +273,13 @@ def split_data(file_names):
             #     df_clear = df_clear[df_clear['TR']<tr_end]
             # *************************************************************         
             # 
-            print('trajetória ' + str(idx) + ' extraída, analíze o arquivo de trajetória completa para verificar TR de corte')
+            print('trajetória ' + str(idx) + ' extraída, analíze o arquivo de saída e o gráfico para determinar o TR de corte, após feche o gráfico')
+
+            # gráfico para escolher ponto de truncar o final da trajetória
+            # *************************************************************
+            if plot:
+                titulo = 'Completo: identifique TR de corte e feche'
+                plot_traj(df_clear, titulo)
 
             # trunca trajetória no TR digitado
             if truncar_traj:
@@ -254,7 +288,12 @@ def split_data(file_names):
                     tr_end = float(tr_end)
                     try:
                         df_clear = df_clear[df_clear['TR']<=tr_end]
-                        print("trajetória cortada em TR = " + str(tr_end))
+                        print("trajetória truncada em TR = " + str(tr_end) + ' feche o gráfico para continuar')
+                        # gráfico após truncado
+                        # *************************************************************
+                        if plot:
+                            titulo = 'Truncado no TR escolhido, feche para continuar'
+                            plot_traj(df_clear,titulo)
                     except ValueError:
                         print("trajetória não truncada: valor digitado não está em TR")
                 except ValueError:
@@ -285,12 +324,12 @@ def split_data(file_names):
             # df_clear = df_clear[df_clear['height']>0]
             df_clear = df_clear[df_clear['Valido']=='Valido'] # Apenas válidos
 
-            df_clear.to_csv(raw_file_name + '_filter_brt.dat',
-                    columns = ['TR', 'ramp_enu_x', 'ramp_enu_y', 'ramp_enu_z'],
-                    header= None,
-                    float_format='%.2f',
-                    index = False
-                    )         
+            # df_clear.to_csv(raw_file_name + '_filter_brt.csv',
+            #         columns = ['TR', 'ramp_enu_x', 'ramp_enu_y', 'ramp_enu_z'],
+            #         header= None,
+            #         float_format='%.2f',
+            #         index = False
+            #         )         
 
             df_clear.reset_index(drop=True, inplace=True)
 
@@ -311,27 +350,6 @@ def split_data(file_names):
                     )
             
             print('trajetória ' + str(idx) + ' concluída')
-
-            # GRÁFICOS
-            # *************************************************************
-            if plot:
-                fig1 = plt.figure()
-                ax1 = fig1.subplots()
-                ax1.plot(df_clear['TR'],df_clear['height'], '.', label='Sensor')
-                ax1.set_xlabel('t(s)')
-                ax1.set_ylabel('height(m)')
-                ax1.legend()
-
-                plt.xlim(0)
-
-                # ax1 = fig1.add_subplot(111, projection='3d')
-                # ax1.plot3D(df_clear['ramp_enu_x'],df_clear['ramp_enu_y'],df_clear['ramp_enu_z'] , '.', label=sensor_sel)
-                # ax1.set_xlabel('X(m)')
-                # ax1.set_ylabel('Y(m)')
-                # ax1.set_zlabel('Z(m)')
-                # ax1.legend()
-
-                plt.show()
 
             
 
