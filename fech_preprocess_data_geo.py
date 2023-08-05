@@ -340,7 +340,8 @@ def split_data(file_names):
                     'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
                     'Período:' : [str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])],
-                    'n_outliers>4000' : len(outliers.index)
+                    'n_outliers>4000' : len(outliers.index),
+                    'DC_max' : [0.001*df_clear['DC'].max()]
                     }
             df_resume = pd.DataFrame(dic)
 
