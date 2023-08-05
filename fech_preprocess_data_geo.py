@@ -11,6 +11,12 @@ import matplotlib.pyplot as plt
 # import geopy.distance
 import pymap3d.vincenty as pmv
 
+# ****************************************************
+# Desenvolvido em agosto de 2023 por Francisval Guedes
+# Email: francisvalg@gmail.com
+# ****************************************************
+
+
 # Funções
 # ****************************************************
 

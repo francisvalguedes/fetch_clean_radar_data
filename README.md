@@ -1,5 +1,7 @@
 # Fetch and Clean Radar Data
 
+Desenvolvido em agosto de 2023, por Francisval Guedes
+
 ## Instalar dependências sem criar ambiente virtual:
 
 ~~~
