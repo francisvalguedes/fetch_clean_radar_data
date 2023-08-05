@@ -115,6 +115,7 @@ def split_data(file_names):
     coord_ref - lista de strings - nomes dos arquivos
     """
     for line in file_names:  # varre a lista de arquivos
+        print(line)
         df = pd.read_csv(line,
                     skipinitialspace=True,
                     # skiprows=range(10),
@@ -364,7 +365,6 @@ dellfiles(output_folder + os.path.sep + '*.csv' )
 dellfiles(output_folder + os.path.sep + '*.dat' )
 
 txt_files = glob.glob('input_raw_data/*.d')
-print(txt_files)
 
 # Função principal
 split_data(txt_files)
