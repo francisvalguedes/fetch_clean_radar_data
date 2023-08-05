@@ -14,7 +14,7 @@ import pymap3d.vincenty as pmv
 # Funções
 # ****************************************************
 
-# impreciso (não utilizado)
+# impreciso (não utilizado); substituido por pymap3d.vincenty
 def hav_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the Haversine distance.
