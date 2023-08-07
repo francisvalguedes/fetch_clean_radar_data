@@ -59,6 +59,7 @@ def plot_traj(df_graf, titulo = 'Título'):
     ax1 = fig1.subplots()
     ax1.plot(df_val['TR'],df_val['height'], '.', label='Válidos')
     ax1.plot(df_nval['TR'],df_nval['height'], '.', label='Não válidos')
+    #ax1.plot(df['TR'],df['ramp_enu_z'], '.', label='z')
     ax1.set_xlabel('t(s)')
     ax1.set_ylabel('height(m)')
     ax1.legend()
@@ -282,6 +283,7 @@ def split_data(file_names):
                 plot_traj(df_clear, titulo)
 
             # trunca trajetória no TR digitado
+            tr_end = 0.0
             if truncar_traj:
                 tr_end = input('Digite o TR(s) para truncar a trajetória ' + str(idx) + ':')
                 try:
@@ -297,7 +299,8 @@ def split_data(file_names):
                     except ValueError:
                         print("trajetória não truncada: valor digitado não está em TR")
                 except ValueError:
-                    print("trajetória não truncada: valor digitado não é um float")                    
+                    print("trajetória não truncada: valor digitado não é um float")
+            periodo_tr = str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])                 
 
             # dataframe de relatório:
             # Colunas de origem 
@@ -339,9 +342,10 @@ def split_data(file_names):
                     'ramp_z_max': [0.001*df_clear['ramp_enu_z'].max()],
                     'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
-                    'Período:' : [str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])],
+                    'Período:' : [periodo_tr],
                     'n_outliers>4000' : len(outliers.index),
-                    'DC_max' : [0.001*df_clear['DC'].max()]
+                    'DC_max' : [0.001*df_clear['DC'].max()],
+                    'TR_end' : [tr_end]
                     }
             df_resume = pd.DataFrame(dic)
 
