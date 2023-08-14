@@ -332,7 +332,7 @@ def split_data(file_names):
             #         header= None,
             #         float_format='%.2f',
             #         index = False
-            #         )         
+            #         )
 
             df_clear.reset_index(drop=True, inplace=True)
 
@@ -358,11 +358,12 @@ def split_data(file_names):
 
             
 
-# Inicialização
+# Configurações
 # ******************************************
 
-sample_time = 0.01 # Periodo de amostragem
+sample_time = 0.01 # Periodo de amostragem do arquivo .d
 sensor_sel = 'Bearn-CLBI' # Sensor
+ramp_sel = 'LMU-CLBI-2'
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
@@ -371,14 +372,25 @@ truncar_traj = True
 # Habilita plotar grafico a cada trajetória
 plot = True
 
-# Arquivo de configuração de localização do Sensor e da Rampa
-c_ref = pd.read_csv( 'config/coord_ref_mr.txt')
+# Arquivo de configuração de localização dos Sensores e das Rampas
+c_ref = pd.read_csv( 'config/coord_refa.txt')
+
+# Fim das configurações
+# ******************************************
 
 # Execução do script
 print('\n')
-print('coord_ref FILE:')
+print('arquivo coord_ref:')
 print(c_ref)
 c_ref = fit_coord(c_ref)
+print('\n')
+print('coordenadas em decimal:')
+print(c_ref)
+print('\n')
+
+c_ref = c_ref[c_ref['name'].str.contains(ramp_sel) + c_ref['name'].str.contains(sensor_sel)] 
+c_ref.set_index([pd.Index(['RAMP', 'SENS'])], inplace=True)
+print('rampa e sensor selecionados:')
 print(c_ref)
 print('\n')
 
