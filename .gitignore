@@ -1,4 +1,5 @@
 /.env
+/bkp
 
 *.d
 *.csv
