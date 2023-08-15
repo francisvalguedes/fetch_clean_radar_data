@@ -61,7 +61,7 @@ def plot_traj(df_graf, titulo = 'Título'):
     ax1.plot(df_nval['TR'],df_nval['height'], '.', label='Não válidos')
     #ax1.plot(df['TR'],df['ramp_enu_z'], '.', label='z')
     ax1.set_xlabel('t(s)')
-    ax1.set_ylabel('height(m)')
+    ax1.set_ylabel('height(Km)')
     ax1.legend()
     plt.title(titulo)
     plt.xlim(0)
@@ -207,11 +207,13 @@ def split_data(file_names):
             df_clear['G'] = df_clear['SAGADA'].str[3]
             df_clear['D'] = df_clear['SAGADA'].str[5]   
 
+            # df_clear['Dist(m)'] = df_clear['Dist']
+
             # Conversão ref sensor
             enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
-            df_clear['sens_enu_x'] = enu_x
-            df_clear['sens_enu_y'] = enu_y
-            df_clear['sens_enu_z'] = enu_z 
+            df_clear['sens_enu_x'] = 0.001*enu_x
+            df_clear['sens_enu_y'] = 0.001*enu_y
+            df_clear['sens_enu_z'] = 0.001*enu_z
 
             # Conversão ref ecef
             ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
@@ -224,23 +226,23 @@ def split_data(file_names):
                                                           ell=pm.Ellipsoid(model= ellipsoid),
                                                           deg=True)
             
-            df_clear['ramp_enu_x'] = ramp_enu_x
-            df_clear['ramp_enu_y'] = ramp_enu_y
-            df_clear['ramp_enu_z'] = ramp_enu_z
+            df_clear['ramp_enu_x'] = 0.001*ramp_enu_x
+            df_clear['ramp_enu_y'] = 0.001*ramp_enu_y
+            df_clear['ramp_enu_z'] = 0.001*ramp_enu_z
 
             # Conversão coordenadas geodésicas
-            lat, lon, alt = pm.enu2geodetic(df_clear['ramp_enu_x'], df_clear['ramp_enu_y'], df_clear['ramp_enu_z'],
+            lat, lon, alt = pm.enu2geodetic(ramp_enu_x, ramp_enu_y, ramp_enu_z,
                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
                                             ell=pm.Ellipsoid(model= ellipsoid), 
                                             deg=True)
             
             df_clear['lat'] = lat
             df_clear['lon'] = lon
-            df_clear['height'] = alt
+            df_clear['height'] = 0.001*alt            
 
             # calcula a distancia geodésica
             # preciso
-            df_clear['DC'] = pmv.vdist(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon, ell=pm.Ellipsoid(model= ellipsoid))[0]
+            df_clear['DC'] = 0.001*pmv.vdist(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon, ell=pm.Ellipsoid(model= ellipsoid))[0]
 
             # impreciso
             # df_clear['DC2'] = 1000*hav_distance(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon )
@@ -304,14 +306,16 @@ def split_data(file_names):
 
             # dataframe de relatório:
             # Colunas de origem 
-            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa']
+            # columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'DC', 'height']
+            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','ramp_enu_x','ramp_enu_y','ramp_enu_z', 'DC', 'height']
+
             # colunas de destino
-            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(km)','Y_Rampa(km)','Z_Rampa(Km)']
+            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)', 'DC_Rampa(Km)', 'Altitude(Km)']
             # salva csv
             df_clear.to_csv(raw_file_name + '_limpo.csv',
                         columns = columns, 
                         header= header,
-                        # float_format='%.3f',
+                        float_format='%.5f',
                         index = False
                         )  
 
@@ -337,15 +341,17 @@ def split_data(file_names):
             df_clear.reset_index(drop=True, inplace=True)
 
             dic = { 'TOP': [top_dec],
-                    'height_max': [0.001*df_clear['height'].max()],
+                    'height_max': [df_clear['height'].max()],
                     'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
-                    'ramp_z_max': [0.001*df_clear['ramp_enu_z'].max()],
+                    'ramp_z_max': [df_clear['ramp_enu_z'].max()],
                     'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
                     'Data': [df_clear.loc[0, 'Data']],
                     'Período:' : [periodo_tr],
                     'n_outliers>4000' : len(outliers.index),
-                    'DC_max' : [0.001*df_clear['DC'].max()],
-                    'TR_end' : [tr_end]
+                    'DC_max' : [df_clear['DC'].max()],
+                    'TR_end' : [tr_end],
+                    'Ramp': [c_ref.loc['RAMP']['name']],
+                    'Sens': [c_ref.loc['SENS']['name']]
                     }
             df_resume = pd.DataFrame(dic)
 
@@ -364,12 +370,12 @@ def split_data(file_names):
 sample_time = 0.01 # Periodo de amostragem do arquivo .d
 
 sensor_sel = 'Bearn-CLBI' # Sensor
-ramp_sel = 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # Rampa
+ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' #'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # Rampa
 
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
-truncar_traj = True
+truncar_traj = False
 
 # Habilita plotar grafico a cada trajetória
 plot = True
@@ -390,9 +396,12 @@ print('coordenadas em decimal:')
 print(c_ref)
 print('\n')
 
+# filtra sensor e rampa selecionados
 if len(c_ref[c_ref['name'].str.contains(ramp_sel)].index):
     if len(c_ref[c_ref['name'].str.contains(sensor_sel)].index):
-        c_ref = c_ref[c_ref['name'].str.contains(ramp_sel) + c_ref['name'].str.contains(sensor_sel)] 
+        # c_ref = c_ref[c_ref['name'].str.contains(ramp_sel) + c_ref['name'].str.contains(sensor_sel)] 
+        c_ref = pd.concat([c_ref[c_ref['name'].str.contains(ramp_sel)],
+                           c_ref[c_ref['name'].str.contains(sensor_sel)]])
         c_ref.set_index([pd.Index(['RAMP', 'SENS'])], inplace=True)
     else:
         print('não existe no arquivo o sensor ' + sensor_sel )
@@ -409,7 +418,7 @@ print('\n')
 output_folder = 'output_clear_data'
 
 dellfiles(output_folder + os.path.sep + '*.csv' )
-dellfiles(output_folder + os.path.sep + '*.dat' )
+# dellfiles(output_folder + os.path.sep + '*.dat' )
 
 txt_files = glob.glob('input_raw_data/*.d')
 
