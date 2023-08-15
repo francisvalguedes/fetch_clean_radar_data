@@ -362,8 +362,10 @@ def split_data(file_names):
 # ******************************************
 
 sample_time = 0.01 # Periodo de amostragem do arquivo .d
+
 sensor_sel = 'Bearn-CLBI' # Sensor
-ramp_sel = 'LMU-CLBI-2'
+ramp_sel = 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # Rampa
+
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
@@ -373,7 +375,7 @@ truncar_traj = True
 plot = True
 
 # Arquivo de configuração de localização dos Sensores e das Rampas
-c_ref = pd.read_csv( 'config/coord_refa.txt')
+c_ref = pd.read_csv( 'config/coord_ref.txt')
 
 # Fim das configurações
 # ******************************************
@@ -388,8 +390,18 @@ print('coordenadas em decimal:')
 print(c_ref)
 print('\n')
 
-c_ref = c_ref[c_ref['name'].str.contains(ramp_sel) + c_ref['name'].str.contains(sensor_sel)] 
-c_ref.set_index([pd.Index(['RAMP', 'SENS'])], inplace=True)
+if len(c_ref[c_ref['name'].str.contains(ramp_sel)].index):
+    if len(c_ref[c_ref['name'].str.contains(sensor_sel)].index):
+        c_ref = c_ref[c_ref['name'].str.contains(ramp_sel) + c_ref['name'].str.contains(sensor_sel)] 
+        c_ref.set_index([pd.Index(['RAMP', 'SENS'])], inplace=True)
+    else:
+        print('não existe no arquivo o sensor ' + sensor_sel )
+        sys.exit()
+else:
+    print('não existe no arquivo a rampa ' + ramp_sel )
+    sys.exit()
+
+
 print('rampa e sensor selecionados:')
 print(c_ref)
 print('\n')
