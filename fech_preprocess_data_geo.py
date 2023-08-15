@@ -182,6 +182,10 @@ def split_data(file_names):
 
             top_dec = df.loc[top_index_list[idx], 'Hora'] # salva a hora do top
 
+            df_split = df_split.dropna(subset=['Sensor'])
+            df_split.reset_index(drop=True)
+            # df_split.dropna(inplace=True)
+
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)] # salva apenas o radar selecionado
             raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
 
@@ -366,16 +370,16 @@ def split_data(file_names):
 
 # Configurações
 # ******************************************
-
+# find -iname '*.d' -exec cp {} ~/Downloads/out/ \;
 sample_time = 0.01 # Periodo de amostragem do arquivo .d
 
 sensor_sel = 'Bearn-CLBI' # Sensor
-ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' #'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # Rampa
+ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
-truncar_traj = False
+truncar_traj = True
 
 # Habilita plotar grafico a cada trajetória
 plot = True
