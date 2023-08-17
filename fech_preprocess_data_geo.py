@@ -17,39 +17,20 @@ from io import StringIO
 # Email: francisvalg@gmail.com
 # ****************************************************
 
-
 # Funções
 # ****************************************************
-
-# impreciso considera terra redonda (não utilizado); substituido por pymap3d.vincenty
-def hav_distance(lat1, lon1, lat2, lon2):
-    """
-    Calculate the Haversine distance.
-    Parameters
-    ----------
-    origin : lat1, lon1 array of float
-    destination : lat2, lon2 array of float
-
-    Returns
-    -------
-    distance_in_km : array of float
-    """
-    R = 6371.0
-    lat1 = np.radians(lat1)
-    lon1 = np.radians(lon1)
-    lat2 = np.radians(lat2)
-    lon2 = np.radians(lon2)
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-
-    a = np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2)**2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-    return R * c
-
-
-# Funções
-# ****************************************************
+def search_timeout(t, timout_t):
+    timeout = {'time': [], 'idx':[], 'timeout': [] }
+    sp = []
+    sp.append(0)
+    for idx in range(1,len(t)):
+        sp.append((t[idx]-t[idx-1]).total_seconds())      
+        if sp[-1]>timout_t:
+            timeout['time'].append(t[idx-1])
+            timeout['idx'].append(idx-1)
+            timeout['timeout'].append((t[idx]-t[idx-1]).total_seconds())
+    df = pd.DataFrame(timeout)
+    return df, sp
 
 def plot_traj(df_graf, titulo = 'Título'):    
     df = df_graf[df_graf['Dist']<4000]
@@ -66,12 +47,6 @@ def plot_traj(df_graf, titulo = 'Título'):
     plt.title(titulo)
     plt.xlim(0)
 
-    # ax1 = fig1.add_subplot(111, projection='3d')
-    # ax1.plot3D(df_clear['ramp_enu_x'],df_clear['ramp_enu_y'],df_clear['ramp_enu_z'] , '.', label=sensor_sel)
-    # ax1.set_xlabel('X(m)')
-    # ax1.set_ylabel('Y(m)')
-    # ax1.set_zlabel('Z(m)')
-    # ax1.legend()
     plt.show()
 
 def dellfiles(file):
@@ -131,7 +106,6 @@ def fit_coord(coord_ref):
             sys. exit()
     return coord_ref
 
-
 def split_data(file_names):
     """
     Função principal, divide o arquivo e trata os dados
@@ -141,32 +115,22 @@ def split_data(file_names):
     """
     for line in file_names:  # varre a lista de arquivos
         print('Aguarde: Processando o arquivo: ' + line)
-        df = pd.read_csv(line,
-                    skipinitialspace=True,
+        df = pd.read_csv(line, skipinitialspace=True,
                     # skiprows=range(10),
-                    dtype = str,
-                    delimiter=','
-                    )
+                    dtype = str, delimiter=',' )
         
         # df é um pandas dataframe com o conteudo do primeiro arquivo .d
-
         df.columns = df.columns.str.replace(' ', '') # Retira espaços nos nomes de colunas
         for col in df.columns: # Retira espaços em todas as linha de todas as colunas
             df[col].str.strip()
 
+        time_col_tmp = pd.to_datetime(df['Data']+ ',' +df['Hora'], format=time_format) # cria um vetor datetime
 
-        time_format = '%d/%m/%Y,%H:%M:%S:%f'
-        # time_format = '%H:%M:%S:%f'
-
-        time = pd.to_datetime(df['Data']+ ',' +df['Hora'], format=time_format) # cria um vetor datetime
-
-        end_idx = [] # inicializa listas
-        period = []
+        end_idx = [] # inicializa lista
         # varre o dataframe a procura de pontos de descontinuidade
         # do tempo como marcador do fim da trajetória
-        for idx in range(1,len(time)):  
-            period.append(time[idx]-time[idx-1])
-            if time[idx]-time[idx-1]>timedelta(seconds=10):
+        for idx in range(1,len(time_col_tmp)):  
+            if time_col_tmp[idx]-time_col_tmp[idx-1]>timedelta(seconds=10):
                 end_idx.append(idx)
 
         # verifica tops occoridos
@@ -182,36 +146,32 @@ def split_data(file_names):
 
             top_dec = df.loc[top_index_list[idx], 'Hora'] # salva a hora do top
 
-            df_split = df_split.dropna(subset=['Sensor'])
-            df_split.reset_index(drop=True)
-            # df_split.dropna(inplace=True)
+            df_split = df_split.dropna(subset=['Sensor']) # remove linhas nulas
+            df_split.reset_index(drop=True) # reseta o indice
 
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)] # salva apenas o radar selecionado
             raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
 
-            # df_split.to_csv(raw_file_name + '_bruto.csv', index = False) # salva arquivo bruto dividido            
             csv_buffer = StringIO() # salva arquivo bruto dividido em buffer
             df_split.to_csv(csv_buffer, index = False)
             # *************************************************************            
             # Ler o arquivo salvo no buffer
-            csv_buffer.seek(0)
-            df_clear = pd.read_csv(csv_buffer, delimiter=',')
-            # df_clear = pd.read_csv(raw_file_name + '_bruto.csv',
-            #             # skipinitialspace=True,
-            #             # skiprows=range(10),
-            #             # dtype = str,
-            #             delimiter=','
-            #             )
+            csv_buffer.seek(0) # Aponta para o inicio do buffer
+            df_clear = pd.read_csv(csv_buffer, delimiter=',')            
 
-            df_clear['datetime'] = time   # Cria coluna datetime
+            time_col_tmp = pd.to_datetime(df_clear['Data']+ ',' +df_clear['Hora'], format=time_format)  
+            df_clear['datetime'] = time_col_tmp  # Cria coluna datetime
 
-            df_clear['TR'] = np.round(np.arange(0,df_clear.shape[0])*sample_time, decimals=2) # Cria coluna tempo relativo ao top
+            df_clear['TR'] = (time_col_tmp - time_col_tmp[0]).dt.total_seconds() # Cria coluna de tempo relativo ao top
+
+            # verifica timout de amostragem
+            _ , sp = search_timeout(df_clear['datetime'], timout_det)
+            df_clear['SP(s)'] = sp # cria coluna de tempo entre amostras            
+            # np.round(np.arange(0,df_clear.shape[0])*sample_time, decimals=2) # Cria coluna tempo relativo ao top
 
             df_clear['S'] = df_clear['SAGADA'].str[1]
             df_clear['G'] = df_clear['SAGADA'].str[3]
             df_clear['D'] = df_clear['SAGADA'].str[5]   
-
-            # df_clear['Dist(m)'] = df_clear['Dist']
 
             # Conversão ref sensor
             enu_x,enu_y,enu_z = pm.aer2enu(df_clear['Azim'], df_clear['Elev'], 1000*df_clear['Dist'], deg=False)
@@ -219,26 +179,42 @@ def split_data(file_names):
             df_clear['sens_enu_y'] = 0.001*enu_y
             df_clear['sens_enu_z'] = 0.001*enu_z
 
-            # Conversão ref ecef
-            ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
-                                                c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
-                                                ell=pm.Ellipsoid(model= ellipsoid),
-                                                deg=True)
-            # Conversão ref RAMPA
-            ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
-                                                          c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
-                                                          ell=pm.Ellipsoid(model= ellipsoid),
-                                                          deg=True)
-            
-            df_clear['ramp_enu_x'] = 0.001*ramp_enu_x
-            df_clear['ramp_enu_y'] = 0.001*ramp_enu_y
-            df_clear['ramp_enu_z'] = 0.001*ramp_enu_z
+            # se o sensor for também a rampa não necessita de paralaxagem
+            if c_ref.loc['SENS']['name']==c_ref.loc['RAMP']['name']:
+                df_clear['ramp_enu_x'] = 0.001*enu_x
+                df_clear['ramp_enu_y'] = 0.001*enu_y
+                df_clear['ramp_enu_z'] = 0.001*enu_z
+            else:
+                # paralaxagem
+                # Conversão para o ref ecef
+                ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
+                                                    c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
+                                                    ell=pm.Ellipsoid(model= ellipsoid),
+                                                    deg=True)
+                # Conversão para ref RAMPA
+                ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
+                                                            c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
+                                                            ell=pm.Ellipsoid(model= ellipsoid),
+                                                            deg=True)                                
+                df_clear['ramp_enu_x'] = 0.001*ramp_enu_x
+                df_clear['ramp_enu_y'] = 0.001*ramp_enu_y
+                df_clear['ramp_enu_z'] = 0.001*ramp_enu_z
+
+            # cria coluna do erro e norma do erro em comparação ao X Y Z do arquivo bruto
+            df_clear['error_x'] = df_clear['ramp_enu_x']-df_clear['X_Rampa']
+            df_clear['error_y'] = df_clear['ramp_enu_y']-df_clear['Y_Rampa']
+            df_clear['error_z'] = df_clear['ramp_enu_z']-df_clear['Z_Rampa']
+            df_clear['norm_error'] = np.linalg.norm(df_clear[['error_x','error_y','error_z']].values,axis=1)
 
             # Conversão coordenadas geodésicas
-            lat, lon, alt = pm.enu2geodetic(ramp_enu_x, ramp_enu_y, ramp_enu_z,
+            lat, lon, alt = pm.enu2geodetic(1000*df_clear['ramp_enu_x'], 1000*df_clear['ramp_enu_y'], 1000*df_clear['ramp_enu_z'],
                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
                                             ell=pm.Ellipsoid(model= ellipsoid), 
                                             deg=True)
+            
+            # lat, lon, alt = pm.ecef2geodetic(ecef_x, ecef_y, ecef_z,
+            #                                 ell=pm.Ellipsoid(model= ellipsoid),
+            #                                 deg=True)
             
             df_clear['lat'] = lat
             df_clear['lon'] = lon
@@ -248,38 +224,9 @@ def split_data(file_names):
             # preciso
             df_clear['DC'] = 0.001*pmv.vdist(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon, ell=pm.Ellipsoid(model= ellipsoid))[0]
 
-            # impreciso
-            # df_clear['DC2'] = 1000*hav_distance(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon )
-
-            # preciso, porem lento:
-            # elips_select = (0.001*pm.Ellipsoid(model= ellipsoid).semimajor_axis,
-            #                 0.001*pm.Ellipsoid(model= ellipsoid).semiminor_axis,
-            #                 pm.Ellipsoid(model= ellipsoid).flattening)
-            # coords_1= (c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'])
-            # dist_geo = []
-            # for llindex in range(len(lat)):                
-            #     coords_2= (lat[llindex], lon[llindex])
-            #     dist_geo.append( geopy.distance.geodesic(coords_1, coords_2, ellipsoid= elips_select).m )
-            # df_clear['DC3'] = dist_geo
-
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
 
-            # *************************************************************
-            # Truncar pelo angulo de elevação:
-            # tr_end = df_clear.loc[len(df_clear.index)-1, 'TR']            
-            # angulo_final_traj = 0.0
-            # if truncar_traj:
-            #     # index_final_traj = df_clear[df_clear['Elev']<angulo_final_traj]
-            #     for index, elem in enumerate(df_clear['Elev']):
-            #         if index > len(df_clear.index)/2:
-            #             if elem < angulo_final_traj:
-            #                 tr_end = df_clear.loc[index, 'TR']
-            #                 print('Corte Elev = ' +str(elem)+ ' TR= ' + str(tr_end))
-            #                 break                
-            #     df_clear = df_clear[df_clear['TR']<tr_end]
-            # *************************************************************         
-            # 
             print('trajetória ' + str(idx) + ' extraída, analíze o arquivo de saída e o gráfico para determinar o TR de corte, após feche o gráfico')
 
             # gráfico para escolher ponto de truncar o final da trajetória
@@ -306,11 +253,19 @@ def split_data(file_names):
                         print("trajetória não truncada: valor digitado não está em TR")
                 except ValueError:
                     print("trajetória não truncada: valor digitado não é um float")
-            periodo_tr = str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora'])                 
+            periodo_tr = str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora']) 
+
+
+            # verifica timout de amostragem
+            timout_o, sp = search_timeout(df_clear['datetime'], timout_det)
+            if len(timout_o.index)>0: timout_o.to_csv(raw_file_name + '_timeout.csv')
+
+            # faz a amostragem dos dados conforme selecionado
+            # df_clear.reset_index(drop=True)
+            df_clear = df_clear.iloc[::sample_step]
 
             # dataframe de relatório:
             # Colunas de origem 
-            # columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'DC', 'height']
             columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','ramp_enu_x','ramp_enu_y','ramp_enu_z', 'DC', 'height']
 
             # colunas de destino
@@ -355,7 +310,8 @@ def split_data(file_names):
                     'DC_max' : [df_clear['DC'].max()],
                     'TR_end' : [tr_end],
                     'Ramp': [c_ref.loc['RAMP']['name']],
-                    'Sens': [c_ref.loc['SENS']['name']]
+                    'Sens': [c_ref.loc['SENS']['name']],
+                    'Timouts': [len(timout_o.index)]
                     }
             df_resume = pd.DataFrame(dic)
 
@@ -373,6 +329,12 @@ def split_data(file_names):
 # find -iname '*.d' -exec cp {} ~/Downloads/out/ \;
 sample_time = 0.01 # Periodo de amostragem do arquivo .d
 
+# passo para amostragem dos dados
+sample_step = 1  # para amostragem de 10ms (sample_time = 0.01):
+                                            # sample_step=1 para 10ms,
+                                            # sample_step=10 para 100ms,
+                                            # sample_step=100 para 1s
+
 sensor_sel = 'Bearn-CLBI' # Sensor
 ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 
@@ -384,11 +346,16 @@ truncar_traj = True
 # Habilita plotar grafico a cada trajetória
 plot = True
 
+# Detecção de timout
+timout_det = 0.012 # tempo em s a partir do qual é considerado para detecção de timout
+
 # Arquivo de configuração de localização dos Sensores e das Rampas
 c_ref = pd.read_csv( 'config/coord_ref.txt')
 
 # Fim das configurações
 # ******************************************
+
+time_format = '%d/%m/%Y,%H:%M:%S:%f'
 
 # Execução do script
 print('\n')
