@@ -19,16 +19,22 @@ from io import StringIO
 
 # Funções
 # ****************************************************
+def resample_df(df, sample_new):
+    df.index = df.loc[:,'datetime'] - df.loc[0,'datetime'] # cria um indice timedelta
+    # df = df.resample('1S').ffill()
+    df = df.resample(timedelta(seconds=sample_new)).ffill() # reamostragem com preenchimento do dado faltante com o anterior
+    return df
+
 def search_timeout(t, timout_t):
-    timeout = {'time': [], 'idx':[], 'timeout': [] }
+    timeout = {'TR': [], 'idx':[], 'timeout': [] }
     sp = []
     sp.append(0)
     for idx in range(1,len(t)):
-        sp.append((t[idx]-t[idx-1]).total_seconds())      
+        sp.append(t[idx]-t[idx-1])      
         if sp[-1]>timout_t:
-            timeout['time'].append(t[idx-1])
+            timeout['TR'].append(t[idx-1])
             timeout['idx'].append(idx-1)
-            timeout['timeout'].append((t[idx]-t[idx-1]).total_seconds())
+            timeout['timeout'].append(t[idx]-t[idx-1])
     df = pd.DataFrame(timeout)
     return df, sp
 
@@ -147,7 +153,7 @@ def split_data(file_names):
             top_dec = df.loc[top_index_list[idx], 'Hora'] # salva a hora do top
 
             df_split = df_split.dropna(subset=['Sensor']) # remove linhas nulas
-            df_split.reset_index(drop=True) # reseta o indice
+            # df_split.reset_index(drop=True, inplace=True) # reseta o indice
 
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)] # salva apenas o radar selecionado
             raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
@@ -165,7 +171,7 @@ def split_data(file_names):
             df_clear['TR'] = (time_col_tmp - time_col_tmp[0]).dt.total_seconds() # Cria coluna de tempo relativo ao top
 
             # verifica timout de amostragem
-            _ , sp = search_timeout(df_clear['datetime'], timout_det)
+            _ , sp = search_timeout(df_clear['TR'], timout_det)
             df_clear['SP(s)'] = sp # cria coluna de tempo entre amostras            
             # np.round(np.arange(0,df_clear.shape[0])*sample_time, decimals=2) # Cria coluna tempo relativo ao top
 
@@ -257,12 +263,15 @@ def split_data(file_names):
 
 
             # verifica timout de amostragem
-            timout_o, _ = search_timeout(df_clear['datetime'], timout_det)
-            if len(timout_o.index)>0: timout_o.to_csv(raw_file_name + '_timeout.csv')
+            timout_o, _ = search_timeout(df_clear['TR'], timout_det)
+            if len(timout_o.index)>0:
+                timout_o.to_csv(raw_file_name + '_timeout.csv')
 
-            # faz a amostragem dos dados conforme selecionado
-            # df_clear.reset_index(drop=True)
-            df_clear = df_clear.iloc[::sample_step]
+            # faz a reamostragem dos dados conforme selecionado
+            if enable_resample==1:
+                df_clear = df_clear.iloc[::sample_step]
+            elif enable_resample==2:
+                df_clear = resample_df(df_clear, sample_new)
 
             # dataframe de relatório:
             # Colunas de origem 
@@ -275,7 +284,7 @@ def split_data(file_names):
                         columns = columns, 
                         header= header,
                         float_format='%.5f',
-                        index = False
+                        index = True
                         )  
 
             # ****************************************************
@@ -329,22 +338,26 @@ def split_data(file_names):
 # find -iname '*.d' -exec cp {} ~/Downloads/out/ \;
 sample_time = 0.01 # Periodo de amostragem do arquivo .d
 
-# passo para amostragem dos dados
-sample_step = 1  # para amostragem de 10ms (sample_time = 0.01):
-                                            # sample_step=1 para 10ms,
-                                            # sample_step=10 para 100ms,
-                                            # sample_step=100 para 1s
-
 sensor_sel = 'Bearn-CLBI' # Sensor
 ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
-truncar_traj = True
+truncar_traj = False
 
 # Habilita plotar grafico a cada trajetória
-plot = True
+plot = False
+
+# reamostragem dos dados enable_resample:
+    # 0-não faz reamostragem, 
+    # 1-reamostragem com passo de tempo fixo e completa dados faltantes com pandas
+    # 2-reamostragem quantidade de amostras fixa 
+enable_resample = 1
+# se enable_resample = 1
+sample_new = 1  # novo tempo de amostragem em segundos 
+# se enable_resample = 2
+sample_step = 100 # 100: para levar da origem de 10ms para resultado de 1s
 
 # Detecção de timout
 timout_det = 0.012 # tempo em s a partir do qual é considerado para detecção de timout
