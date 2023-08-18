@@ -257,7 +257,7 @@ def split_data(file_names):
 
 
             # verifica timout de amostragem
-            timout_o, sp = search_timeout(df_clear['datetime'], timout_det)
+            timout_o, _ = search_timeout(df_clear['datetime'], timout_det)
             if len(timout_o.index)>0: timout_o.to_csv(raw_file_name + '_timeout.csv')
 
             # faz a amostragem dos dados conforme selecionado
