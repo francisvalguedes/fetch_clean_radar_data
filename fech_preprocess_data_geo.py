@@ -22,7 +22,7 @@ from io import StringIO
 def resample_df(df, sample_new):
     df.index = df.loc[:,'datetime'] - df.loc[0,'datetime'] # cria um indice timedelta
     # df = df.resample('1S').ffill()
-    df = df.resample(timedelta(seconds=sample_new)).ffill() # reamostragem com preenchimento do dado faltante com o anterior
+    df = df.resample(timedelta(seconds=sample_new)).bfill() # reamostragem com preenchimento do dado faltante com o anterior
     return df
 
 def search_timeout(t, timout_t):
@@ -156,8 +156,13 @@ def split_data(file_names):
             # df_split.reset_index(drop=True, inplace=True) # reseta o indice
 
             df_split = df_split[df_split['Sensor'].str.contains(sensor_sel)] # salva apenas o radar selecionado
-            raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
+            # *****************************************************************************************
+            # teste input_raw_data/SO48274_090823_sup.d
+            # df_split.reset_index(drop=True, inplace=True)
+            # df_split = df_split.loc[31:] 
+            # *****************************************************************************************
 
+            raw_file_name = output_folder + os.path.sep + 'file_' + line.split(os.path.sep)[-1]+ '_tr_' +str(idx) 
             csv_buffer = StringIO() # salva arquivo bruto dividido em buffer
             df_split.to_csv(csv_buffer, index = False)
             # *************************************************************            
@@ -252,9 +257,9 @@ def split_data(file_names):
                         print("trajetória truncada em TR = " + str(tr_end) + ' feche o gráfico para continuar')
                         # gráfico após truncado
                         # *************************************************************
-                        if plot:
-                            titulo = 'Truncado no TR escolhido, feche para continuar'
-                            plot_traj(df_clear,titulo)
+                        # if plot:
+                        #     titulo = 'Truncado no TR escolhido, feche para continuar'
+                        #     plot_traj(df_clear,titulo)
                     except ValueError:
                         print("trajetória não truncada: valor digitado não está em TR")
                 except ValueError:
@@ -269,9 +274,18 @@ def split_data(file_names):
 
             # faz a reamostragem dos dados conforme selecionado
             if enable_resample==1:
-                df_clear = df_clear.iloc[::sample_step]
+                df_clear.index = df_clear['datetime'] - df_clear.loc[0,'datetime'] # cria um indice timedelta
+                df_clear = df_clear.resample(timedelta(seconds=sample_new)).bfill() # reamostragem com pandas bfill (amostra posterior)
             elif enable_resample==2:
-                df_clear = resample_df(df_clear, sample_new)
+                df_clear = df_clear.iloc[::sample_step]
+
+            # df_clear.reset_index(drop=True, inplace=True)
+
+            print("feche o gráfico para continuar")
+            # *************************************************************
+            if plot:
+                titulo = 'Truncado no TR escolhido, feche para continuar'
+                plot_traj(df_clear,titulo)
 
             # dataframe de relatório:
             # Colunas de origem 
@@ -344,20 +358,20 @@ ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 ellipsoid = 'wgs72' # Ellipsoid
 
 # Habilita a função de Truncar ou não a trajetória
-truncar_traj = False
+truncar_traj = True
 
 # Habilita plotar grafico a cada trajetória
-plot = False
+plot = True
 
 # reamostragem dos dados enable_resample:
     # 0-não faz reamostragem, 
-    # 1-reamostragem com passo de tempo fixo e completa dados faltantes com pandas
-    # 2-reamostragem quantidade de amostras fixa 
+    # 1-reamostragem com passo de tempo fixo (sample_new) com pandas.ffil
+    # 2-reamostragem quantidade de amostras fixa (sample_step), TR fica quebrado
 enable_resample = 1
-# se enable_resample = 1
+# se enable_resample = 1 ajusta:
 sample_new = 1  # novo tempo de amostragem em segundos 
-# se enable_resample = 2
-sample_step = 100 # 100: para levar da origem de 10ms para resultado de 1s
+# se enable_resample = 2 então ajusta:
+sample_step = 100 # numero de amostras: de 10ms para 1s, sample_step=100
 
 # Detecção de timout
 timout_det = 0.012 # tempo em s a partir do qual é considerado para detecção de timout
