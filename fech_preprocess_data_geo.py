@@ -374,7 +374,7 @@ sample_new = 1  # novo tempo de amostragem em segundos
 sample_step = 100 # numero de amostras: de 10ms para 1s, sample_step=100
 
 # Detecção de timout
-timout_det = 0.012 # tempo em s a partir do qual é considerado para detecção de timout
+timout_det = 0.012 # tempo em s a partir do qual é considerado timout
 
 # Arquivo de configuração de localização dos Sensores e das Rampas
 c_ref = pd.read_csv( 'config/coord_ref.txt')
