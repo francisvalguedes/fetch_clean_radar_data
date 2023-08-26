@@ -320,30 +320,31 @@ def split_data(file_names):
             #         index = False
             #         )
 
-            df_clear.reset_index(drop=True, inplace=True)
+            if len(df_clear.index)>0:
+                df_clear.reset_index(drop=True, inplace=True)
+                dic = { 'TOP': [top_dec],
+                        'height_max': [df_clear['height'].max()],
+                        'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
+                        'ramp_z_max': [df_clear['ramp_enu_z'].max()],
+                        'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
+                        'Data': [df_clear.loc[0, 'Data']],
+                        'Período:' : [periodo_tr],
+                        'n_outliers>4000' : len(outliers.index),
+                        'DC_max' : [df_clear['DC'].max()],
+                        'TR_end' : [tr_end],
+                        'Ramp': [c_ref.loc['RAMP']['name']],
+                        'Sens': [c_ref.loc['SENS']['name']],
+                        'Timouts': [len(timout_o.index)]
+                        }
+                df_resume = pd.DataFrame(dic)
 
-            dic = { 'TOP': [top_dec],
-                    'height_max': [df_clear['height'].max()],
-                    'TR_height_max': [df_clear.loc[df_clear['height'].idxmax(), 'TR']],
-                    'ramp_z_max': [df_clear['ramp_enu_z'].max()],
-                    'TR_z_max': [df_clear.loc[df_clear['Z_Rampa'].idxmax(), 'TR']],
-                    'Data': [df_clear.loc[0, 'Data']],
-                    'Período:' : [periodo_tr],
-                    'n_outliers>4000' : len(outliers.index),
-                    'DC_max' : [df_clear['DC'].max()],
-                    'TR_end' : [tr_end],
-                    'Ramp': [c_ref.loc['RAMP']['name']],
-                    'Sens': [c_ref.loc['SENS']['name']],
-                    'Timouts': [len(timout_o.index)]
-                    }
-            df_resume = pd.DataFrame(dic)
-
-            df_resume.to_csv( raw_file_name + '_resumo.csv',
-                    index = False,
-                    float_format='%.5f'
-                    )
-            
-            print('trajetória ' + str(idx) + ' concluída')
+                df_resume.to_csv( raw_file_name + '_resumo.csv',
+                        index = False,
+                        float_format='%.5f'
+                        )                
+                print('trajetória ' + str(idx) + ' concluída')
+            else:
+                print('trajetória ' + str(idx) + ' não tem pontos válidos')
 
             
 
