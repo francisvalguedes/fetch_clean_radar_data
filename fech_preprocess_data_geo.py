@@ -368,7 +368,7 @@ plot = True
     # 0- não faz reamostragem (recomendado quando se deseja a mesma amostragem do bruto (.d)) para o arquivo de saída, 
     # 1- reamostragem com passo de tempo fixo (sample_new) com pandas.ffil (recomendado quando se deseja um tempo de amostragem maior do que o bruto (.d) para o arquivo de saída)
     # 2-reamostragem quantidade de amostras fixa (sample_step), TR fica quebrado (similar ao sistema antigo)
-enable_resample = 1
+enable_resample = 0
 # se enable_resample = 1 ajusta:
 sample_new = 1  # novo tempo de amostragem em segundos 
 # se enable_resample = 2 então ajusta:
