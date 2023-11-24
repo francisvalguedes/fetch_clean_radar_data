@@ -30,13 +30,16 @@ def search_timeout(t, timout_t):
     sp = []
     sp.append(0)
     for idx in range(1,len(t)):
-        sp.append(t[idx]-t[idx-1])      
-        if sp[-1]>timout_t:
+        sp.append(t[idx]-t[idx-1])
+
+    sp_estimado = np.round(100*np.mean(sp))/100
+    for idx in range(1,len(sp)):
+        if sp[idx]>sp_estimado+sp_estimado*timout_t:
             timeout['TR'].append(t[idx-1])
             timeout['idx'].append(idx-1)
             timeout['timeout'].append(t[idx]-t[idx-1])
     df = pd.DataFrame(timeout)
-    return df, sp
+    return df, sp, sp_estimado
 
 def plot_traj(df_graf, titulo = 'Título'):    
     df = df_graf[df_graf['Dist']<4000]
@@ -52,7 +55,6 @@ def plot_traj(df_graf, titulo = 'Título'):
     ax1.legend()
     plt.title(titulo)
     plt.xlim(0)
-
     plt.show()
 
 def dellfiles(file):
@@ -141,7 +143,10 @@ def split_data(file_names):
 
         # verifica tops occoridos
         top_index_list = df[df['Sensor']=='TOPDEC-LIG'].index.values
-                
+        print('Indices dos tops ocorridos:')
+        print(top_index_list)
+        print('Indices dos finais das trajetórias:')
+        print(end_idx)
         # varre os tops para dividir as trajetórias
         # *************************************************************
         for idx in range(len(top_index_list)):
@@ -176,7 +181,7 @@ def split_data(file_names):
             df_clear['TR'] = (time_col_tmp - time_col_tmp[0]).dt.total_seconds() # Cria coluna de tempo relativo ao top
 
             # verifica timout de amostragem
-            _ , sp = search_timeout(df_clear['TR'], timout_det)
+            _ , sp, sp_estimado = search_timeout(df_clear['TR'], timout_det)
             df_clear['SP(s)'] = sp # cria coluna de tempo entre amostras            
             # np.round(np.arange(0,df_clear.shape[0])*sample_time, decimals=2) # Cria coluna tempo relativo ao top
 
@@ -243,7 +248,7 @@ def split_data(file_names):
             # gráfico para escolher ponto de truncar o final da trajetória
             # *************************************************************
             if plot:
-                titulo = 'Completo: identifique TR de corte e feche'
+                titulo = line.split(os.path.sep)[-1] + ': Completo: identifique TR de corte e feche'
                 plot_traj(df_clear, titulo)
 
             # trunca trajetória no TR digitado
@@ -266,9 +271,10 @@ def split_data(file_names):
                     print("trajetória não truncada: valor digitado não é um float")
             periodo_tr = str(df_clear.loc[0, 'Hora']) + ' a ' + str(df_clear.loc[len(df_clear.index)-1, 'Hora']) 
 
-
+            tr_end = df_clear.loc[len(df_clear.index)-1, 'TR']
+            
             # verifica timout de amostragem
-            timout_o, _ = search_timeout(df_clear['TR'], timout_det)
+            timout_o, _, _ = search_timeout(df_clear['TR'], timout_det)
             if len(timout_o.index)>0:
                 timout_o.to_csv(raw_file_name + '_timeout.csv')
 
@@ -284,7 +290,7 @@ def split_data(file_names):
             print("feche o gráfico para continuar")
             # *************************************************************
             if plot:
-                titulo = 'Truncado no TR escolhido, feche para continuar'
+                titulo = line.split(os.path.sep)[-1] + ': Truncado no TR escolhido, feche para continuar'
                 plot_traj(df_clear,titulo)
 
             # dataframe de relatório:
@@ -334,7 +340,8 @@ def split_data(file_names):
                         'TR_end' : [tr_end],
                         'Ramp': [c_ref.loc['RAMP']['name']],
                         'Sens': [c_ref.loc['SENS']['name']],
-                        'Timouts': [len(timout_o.index)]
+                        'Timouts': [len(timout_o.index)],
+                        'T_amostra_est': [sp_estimado]
                         }
                 df_resume = pd.DataFrame(dic)
 
@@ -351,9 +358,9 @@ def split_data(file_names):
 # Configurações
 # ******************************************
 # find -iname '*.d' -exec cp {} ~/Downloads/out/ \;
-sample_time = 0.01 # Periodo de amostragem do arquivo .d
+# sample_time = 0.1 # Periodo de amostragem do arquivo .d
 
-sensor_sel = 'Bearn-CLBI' # Sensor
+sensor_sel = 'Telemedidas-CLBI' # 'Bearn-CLBI' # Sensor
 ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 
 ellipsoid = 'wgs72' # Ellipsoid
@@ -375,7 +382,7 @@ sample_new = 1  # novo tempo de amostragem em segundos
 sample_step = 100 # numero de amostras: de 10ms para 1s, sample_step=100
 
 # Detecção de timout
-timout_det = 0.012 # tempo em s a partir do qual é considerado timout
+timout_det = 0.1 # % de atraso a partir do qual é considerado timout
 
 # Arquivo de configuração de localização dos Sensores e das Rampas
 c_ref = pd.read_csv( 'config/coord_ref.txt')
