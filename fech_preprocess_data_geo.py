@@ -74,7 +74,7 @@ def dellfiles(file):
             err = e.strerror
     return err
 
-def gms_to_decimal(s):
+def gms_to_decimal(dms_str):
     """
     Converte angulos em graus, minutos e segundos para float
     Parameters
@@ -84,11 +84,23 @@ def gms_to_decimal(s):
     -------
     angulo : float
     """
-    angle_gms = re.split('[°\' "]+', s)
-    dd = 0
-    for i in range(3):
-        dd+= np.sign(float(angle_gms[0]))*abs(float(angle_gms[i])/(60**i))
-    return dd
+    # Define uma expressão regular para extrair graus, minutos e segundos, considerando sinais
+    pattern = r'([-+]?\d+)°\s*(\d+)\'\s*(\d+\.\d+)'
+    match = re.match(pattern, dms_str.strip())
+    
+    if match:
+        degrees = int(match.group(1))
+        minutes = int(match.group(2))
+        seconds = float(match.group(3))
+        
+        # Verifica o sinal dos graus
+        sign = -1 if '-' in dms_str else 1
+        
+        # Converte DMS em graus decimais
+        decimal_degrees = sign * (abs(degrees) + minutes / 60 + seconds / 3600)
+        return decimal_degrees
+    else:
+        raise ValueError("Formato DMS inválido")
 
 def fit_coord(coord_ref):
     """
