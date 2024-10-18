@@ -205,12 +205,12 @@ def split_data(file_names):
                 # Conversão para o ref ecef
                 ecef_x,ecef_y,ecef_z = pm.enu2ecef(enu_x, enu_y, enu_z,
                                                     c_ref.loc['SENS']['lat'], c_ref.loc['SENS']['lon'], c_ref.loc['SENS']['height'],
-                                                    ell=pm.Ellipsoid(model= ellipsoid),
+                                                    ell=pm.Ellipsoid.from_name(ellipsoid),
                                                     deg=True)
                 # Conversão para ref RAMPA
                 ramp_enu_x,ramp_enu_y,ramp_enu_z= pm.ecef2enu(ecef_x, ecef_y, ecef_z,
                                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
-                                                            ell=pm.Ellipsoid(model= ellipsoid),
+                                                            ell=pm.Ellipsoid.from_name(ellipsoid),
                                                             deg=True)                                
                 df_clear['ramp_enu_x'] = 0.001*ramp_enu_x
                 df_clear['ramp_enu_y'] = 0.001*ramp_enu_y
@@ -225,11 +225,11 @@ def split_data(file_names):
             # Conversão coordenadas geodésicas
             lat, lon, alt = pm.enu2geodetic(1000*df_clear['ramp_enu_x'], 1000*df_clear['ramp_enu_y'], 1000*df_clear['ramp_enu_z'],
                                             c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], c_ref.loc['RAMP']['height'],
-                                            ell=pm.Ellipsoid(model= ellipsoid), 
+                                            ell=pm.Ellipsoid.from_name(ellipsoid), 
                                             deg=True)
             
             # lat, lon, alt = pm.ecef2geodetic(ecef_x, ecef_y, ecef_z,
-            #                                 ell=pm.Ellipsoid(model= ellipsoid),
+            #                                 ell=pm.Ellipsoid.from_name(ellipsoid),
             #                                 deg=True)
             
             df_clear['lat'] = lat
@@ -238,7 +238,7 @@ def split_data(file_names):
 
             # calcula a distancia geodésica
             # preciso
-            df_clear['DC'] = 0.001*pmv.vdist(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon, ell=pm.Ellipsoid(model= ellipsoid))[0]
+            df_clear['DC'] = 0.001*pmv.vdist(c_ref.loc['RAMP']['lat'], c_ref.loc['RAMP']['lon'], lat, lon, ell=pm.Ellipsoid.from_name(ellipsoid))[0]
 
             # Salva dataframe completo
             df_clear.to_csv( raw_file_name + '_completo.csv',index = True)
@@ -295,10 +295,13 @@ def split_data(file_names):
 
             # dataframe de relatório:
             # Colunas de origem 
-            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','ramp_enu_x','ramp_enu_y','ramp_enu_z', 'DC', 'height']
+            # columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','ramp_enu_x','ramp_enu_y','ramp_enu_z', 'DC', 'height']
+            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'Vx', 'Vy', 'Vz', 'DC', 'height']
+
+            
 
             # colunas de destino
-            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)', 'DC_Rampa(Km)', 'Altitude(Km)']
+            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)','Vx_Rampa', 'Vy_Rampa', 'Vz_Rampa', 'DC_Rampa(Km)', 'Altitude(Km)']
             # salva csv
             df_clear.to_csv(raw_file_name + '_limpo.csv',
                         columns = columns, 
@@ -360,8 +363,8 @@ def split_data(file_names):
 # find -iname '*.d' -exec cp {} ~/Downloads/out/ \;
 # sample_time = 0.1 # Periodo de amostragem do arquivo .d
 
-sensor_sel = 'Telemedidas-CLBI' # 'Bearn-CLBI' # Sensor
-ramp_sel = 'MRL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
+sensor_sel = 'Bearn-CLBI' # 'Bearn-CLBI' # Sensor
+ramp_sel = 'UNIVERSAL-CLBI' # 'UNIVERSAL-CLBI' # 'LMU-CLBI-2' # MRL-CLBI # Rampa
 
 ellipsoid = 'wgs72' # Ellipsoid
 
@@ -375,7 +378,7 @@ plot = True
     # 0- não faz reamostragem (recomendado quando se deseja a mesma amostragem do bruto (.d)) para o arquivo de saída, 
     # 1- reamostragem com passo de tempo fixo (sample_new) com pandas.ffil (recomendado quando se deseja um tempo de amostragem maior do que o bruto (.d) para o arquivo de saída)
     # 2-reamostragem quantidade de amostras fixa (sample_step), TR fica quebrado (similar ao sistema antigo)
-enable_resample = 0
+enable_resample = 1
 # se enable_resample = 1 ajusta:
 sample_new = 1  # novo tempo de amostragem em segundos 
 # se enable_resample = 2 então ajusta:
