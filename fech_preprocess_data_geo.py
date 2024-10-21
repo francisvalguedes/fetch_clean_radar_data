@@ -19,6 +19,7 @@ from io import StringIO
 
 # Funções
 # ****************************************************
+
 def resample_df(df, sample_new):
     df.index = df.loc[:,'datetime'] - df.loc[0,'datetime'] # cria um indice timedelta
     # df = df.resample('1S').ffill()
@@ -137,7 +138,10 @@ def split_data(file_names):
         print('Aguarde: Processando o arquivo: ' + line)
         df = pd.read_csv(line, skipinitialspace=True,
                     # skiprows=range(10),
-                    dtype = str, delimiter=',' )
+                    dtype = str,
+                    # on_bad_lines='warn',
+                    delimiter=',' )
+        
         
         # df é um pandas dataframe com o conteudo do primeiro arquivo .d
         df.columns = df.columns.str.replace(' ', '') # Retira espaços nos nomes de colunas
@@ -308,12 +312,19 @@ def split_data(file_names):
             # dataframe de relatório:
             # Colunas de origem 
             # columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','ramp_enu_x','ramp_enu_y','ramp_enu_z', 'DC', 'height']
-            columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'Vx', 'Vy', 'Vz', 'DC', 'height']
-
-            
+            colunas_necessarias = ['Vx', 'Vy', 'Vz']
+            if all(coluna in df.columns for coluna in colunas_necessarias): 
+                # colunas de origem
+                columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'Vx', 'Vy', 'Vz', 'DC', 'height']
+                # colunas de destino
+                header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)','Vx_ECEF(m/s)', 'Vy_ECEF(m/s)', 'Vz_ECEF(m/s)', 'DC_Rampa(Km)', 'Altitude(Km)']
+            else:
+                # colunas de origem
+                columns = ['Hora','TR','S','G','D','Snl_Rdo','Modo','Elev','Azim','Dist','X_Rampa','Y_Rampa','Z_Rampa', 'DC', 'height']
+                # colunas de destino
+                header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)', 'DC_Rampa(Km)', 'Altitude(Km)']
 
             # colunas de destino
-            header = ['Tempo Universal','Tempo Relativo','S','G','D','S/R(dB)','Modo','Elev(rad)','Azim(rad)','Dist(km)','X_Rampa(Km)','Y_Rampa(Km)','Z_Rampa(Km)','Vx_Rampa', 'Vy_Rampa', 'Vz_Rampa', 'DC_Rampa(Km)', 'Altitude(Km)']
             # salva csv
             df_clear.to_csv(raw_file_name + '_limpo.csv',
                         columns = columns, 
